@@ -1,7 +1,13 @@
 "use client"
 
-import { CheckIcon } from "lucide-react"
+import { CheckIcon, PlayIcon, Share2Icon, StarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import type { TabId } from "@/lib/data"
 import { Asset, Chip, IconButton, MaskIcon, PrimaryButton, Tip } from "./primitives"
 
@@ -11,7 +17,11 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: "tasks", label: "Tasks", icon: "book-closed.svg" },
 ]
 
-/** Figma 1:5206 — 54px top bar on #F5F5F5 with a 1px #ECECEC bottom rule. */
+/**
+ * Figma 1:5206 — 54px top bar on #F5F5F5 with a 1px #ECECEC bottom rule.
+ * < lg: agent name over its status, a "…" menu (Share, Test, Favourite) and Publish;
+ * the view tabs wrap onto a full-width segmented row underneath.
+ */
 export function TopBar({
   tab,
   onTabChange,
@@ -38,9 +48,9 @@ export function TopBar({
   onPublish: () => void
 }) {
   return (
-    <header className="relative flex h-[54px] shrink-0 items-center justify-between border-b border-(--ea-line) bg-(--ea-bar) px-4 py-3">
+    <header className="relative flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-(--ea-line) bg-(--ea-bar) px-3 py-2 lg:h-[54px] lg:flex-nowrap lg:gap-0 lg:px-4 lg:py-3">
       {/* Left: menu + agent identity */}
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2 lg:flex-none">
         <IconButton
           icon="menu-02.svg"
           label={panelOpen ? "Hide AI Assistant" : "Show AI Assistant"}
@@ -48,12 +58,12 @@ export function TopBar({
           aria-controls="ea-assistant"
           onClick={onTogglePanel}
         />
-        <div className="flex h-[30px] items-center gap-3 rounded-full p-2">
-          <div className="flex items-center gap-1.5">
+        <div className="flex min-w-0 flex-col items-start gap-1 rounded-full lg:h-[30px] lg:flex-row lg:items-center lg:gap-3 lg:p-2">
+          <div className="flex min-w-0 max-w-full items-center gap-1.5">
             <Chip color="var(--ea-teal)" size={14} radius={4}>
               <Asset name="mail-02.svg" size={10} />
             </Chip>
-            <h1 className="text-[14px] leading-none font-medium tracking-[-0.28px] whitespace-nowrap text-(--ea-fg-title)">
+            <h1 className="truncate text-[14px] leading-none font-medium tracking-[-0.28px] whitespace-nowrap text-(--ea-fg-title)">
               Kargul’s Email Agent
             </h1>
           </div>
@@ -61,7 +71,7 @@ export function TopBar({
             <span
               role="status"
               className={cn(
-                "flex h-6 items-center gap-1 rounded-md p-1.5 text-[12px] leading-none font-medium tracking-[-0.24px] whitespace-nowrap transition-colors duration-150",
+                "flex h-5 items-center gap-1 rounded-md p-1 text-[11px] leading-none font-medium tracking-[-0.24px] whitespace-nowrap transition-colors duration-150 lg:h-6 lg:p-1.5 lg:text-[12px]",
                 published ? "bg-(--ea-teal-soft) text-(--ea-teal)" : "bg-(--ea-blue-soft) text-(--ea-blue)",
               )}
             >
@@ -79,7 +89,7 @@ export function TopBar({
                 aria-label="Favourite agent"
                 onClick={onToggleStar}
                 className={cn(
-                  "flex size-6 cursor-pointer items-center justify-center rounded-md transition-[background-color,filter,opacity] duration-150",
+                  "hidden size-6 cursor-pointer items-center justify-center rounded-md lg:flex transition-[background-color,filter,opacity] duration-150",
                   starred ? "bg-(--ea-amber-soft)" : "bg-black/[0.04] opacity-70 grayscale hover:opacity-100",
                 )}
               >
@@ -94,7 +104,7 @@ export function TopBar({
       <div
         role="tablist"
         aria-label="Agent views"
-        className="absolute top-3 left-[calc(50%+0.5px)] flex -translate-x-1/2 items-center rounded-[10px] bg-(--ea-segment)"
+        className="order-last flex w-full items-center rounded-[10px] bg-(--ea-segment) lg:absolute lg:top-3 lg:left-[calc(50%+0.5px)] lg:order-none lg:w-auto lg:-translate-x-1/2"
       >
         {TABS.map((t) => {
           const active = tab === t.id
@@ -108,7 +118,7 @@ export function TopBar({
               aria-controls="ea-main"
               onClick={() => onTabChange(t.id)}
               className={cn(
-                "flex h-[30px] items-center gap-1 p-2 text-[14px] leading-none font-medium tracking-[-0.28px] whitespace-nowrap",
+                "flex h-10 flex-1 items-center justify-center gap-1 p-2 text-[14px] lg:h-[30px] lg:flex-none leading-none font-medium tracking-[-0.28px] whitespace-nowrap",
                 active
                   ? "ea-control text-(--ea-fg)"
                   : "cursor-pointer rounded-md text-(--ea-fg-muted) transition-colors duration-150 hover:text-(--ea-fg)",
@@ -121,28 +131,57 @@ export function TopBar({
         })}
       </div>
 
-      {/* Right: Share | Test, Publish */}
-      <div className="flex items-center gap-2">
+      {/* Right: Share | Test, Publish  (< lg: "…" menu + Publish) */}
+      <div className="flex shrink-0 items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button type="button" aria-label="More actions" className="ea-control size-10 p-2 lg:hidden">
+                <Asset name="dots-horizontal.svg" />
+              </button>
+            }
+          />
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem className="min-h-10" onClick={onShare}>
+              <Share2Icon className="text-(--ea-fg-muted)" />
+              Copy share link
+            </DropdownMenuItem>
+            <DropdownMenuItem className="min-h-10" onClick={onTest} disabled={testing}>
+              <PlayIcon className="text-(--ea-fg-muted)" />
+              {testing ? "Testing…" : "Run a test"}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="min-h-10" onClick={onToggleStar}>
+              <StarIcon className={cn(starred ? "fill-[#f6b30f] text-[#f6b30f]" : "text-(--ea-fg-muted)")} />
+              {starred ? "Remove from favourites" : "Add to favourites"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <button
           type="button"
           onClick={onShare}
-          className="ea-control h-[30px] gap-[7px] px-3 py-2 text-[14px] leading-none font-medium tracking-[-0.28px]"
+          className="ea-control hidden h-[30px] gap-[7px] lg:inline-flex px-3 py-2 text-[14px] leading-none font-medium tracking-[-0.28px]"
         >
           <Asset name="share-06.svg" />
           Share
         </button>
-        <span aria-hidden className="h-3 w-px bg-(--ea-divider)" />
+        <span aria-hidden className="hidden h-3 w-px bg-(--ea-divider) lg:block" />
         <button
           type="button"
           onClick={onTest}
           disabled={testing}
-          className="ea-control h-[30px] gap-1.5 px-3 py-2 text-[14px] leading-none font-medium tracking-[-0.28px]"
+          className="ea-control hidden h-[30px] gap-1.5 lg:inline-flex px-3 py-2 text-[14px] leading-none font-medium tracking-[-0.28px]"
         >
           <Asset name="play-circle.svg" className={cn(testing && "animate-pulse")} />
           {testing ? "Testing…" : "Test"}
         </button>
-        <PrimaryButton icon="arrow-narrow-up.svg" onClick={onPublish} disabled={published}>
-          {published ? "Published" : "Publish changes"}
+        <PrimaryButton icon="arrow-narrow-up.svg" onClick={onPublish} disabled={published} className="max-lg:h-10">
+          {published ? (
+            "Published"
+          ) : (
+            <>
+              Publish<span className="hidden sm:inline"> changes</span>
+            </>
+          )}
         </PrimaryButton>
       </div>
     </header>

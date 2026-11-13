@@ -17,7 +17,7 @@ import { Asset, Chip, IconButton, Tip } from "./primitives"
 const TEXT = "text-[14px] font-medium tracking-[-0.28px] text-(--ea-fg-body)"
 const HEADING = "text-[16px] leading-[1.48] font-semibold tracking-[-0.32px] text-(--ea-fg-body)"
 
-/** Figma 1:5262 — 440px AI Assistant panel (header, thread, composer). */
+/** Figma 1:5262 — 440px AI Assistant panel (header, thread, composer). Fills the sheet below lg. */
 export function AssistantPanel({
   messages,
   typing,
@@ -52,7 +52,7 @@ export function AssistantPanel({
   }, [messages.length, typing])
 
   return (
-    <div className="flex h-full w-[440px] flex-col gap-[2px] bg-(--ea-page)">
+    <div className="flex h-full w-full flex-col gap-[2px] bg-(--ea-page) lg:w-[440px]">
       {/* Header (1:5263) */}
       <div className="flex h-[54px] shrink-0 items-center gap-2 border-b border-(--ea-line) bg-(--ea-panel) px-4 py-3">
         <Chip color="var(--ea-blue)" size={14} radius={4}>
@@ -64,7 +64,7 @@ export function AssistantPanel({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <button type="button" aria-label="Assistant options" className="ea-control size-[30px] p-2">
+              <button type="button" aria-label="Assistant options" className="ea-control size-[30px] p-2 max-lg:size-10">
                 <Asset name="dots-horizontal.svg" />
               </button>
             }
@@ -90,8 +90,8 @@ export function AssistantPanel({
       </div>
 
       {/* Body (Frame 18) */}
-      <div className="relative flex min-h-0 flex-1 flex-col bg-(--ea-panel) pb-5 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-(--ea-line)">
-        <div ref={scrollRef} className="ea-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-4" aria-live="polite">
+      <div className="relative flex min-h-0 flex-1 flex-col bg-(--ea-panel) pb-5 max-lg:pb-3 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-(--ea-line)">
+        <div ref={scrollRef} className="ea-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4" aria-live="polite">
           <div className="flex flex-col gap-6 px-2 pb-2">
             {messages.map((m) => (
               <Message key={m.id} message={m} />
@@ -254,7 +254,7 @@ function Composer({
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Ready to help, ask anything..."
-          className="-my-[3px] max-h-[120px] min-h-5 w-full resize-none bg-transparent text-[14px] leading-5 font-medium tracking-[-0.28px] text-(--ea-fg-body) outline-none [field-sizing:content] placeholder:text-(--ea-fg-placeholder)"
+          className="-my-[3px] max-h-[120px] min-h-5 w-full resize-none bg-transparent text-[14px] max-lg:text-base leading-5 font-medium tracking-[-0.28px] text-(--ea-fg-body) outline-none [field-sizing:content] placeholder:text-(--ea-fg-placeholder)"
         />
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
@@ -268,7 +268,7 @@ function Composer({
               onClick={submit}
               aria-label="Send message"
               disabled={disabled}
-              className="relative size-[30px] shrink-0 cursor-pointer rounded-[10px] transition-opacity duration-150 hover:opacity-90 active:opacity-80 disabled:cursor-default disabled:opacity-60"
+              className="relative size-[30px] shrink-0 cursor-pointer rounded-[10px] transition-opacity max-lg:after:absolute max-lg:after:-inset-[5px] max-lg:after:content-[''] duration-150 hover:opacity-90 active:opacity-80 disabled:cursor-default disabled:opacity-60"
             >
               <Asset name="send-button.svg" size={38} className="absolute -top-0.5 -left-1" />
             </button>
@@ -289,7 +289,7 @@ function Composer({
               <button
                 type="button"
                 aria-label="Choose model"
-                className="flex size-[14px] cursor-pointer items-center justify-center rounded-sm opacity-100 transition-opacity hover:opacity-70"
+                className="relative flex size-[14px] cursor-pointer items-center justify-center rounded-sm opacity-100 transition-opacity hover:opacity-70 max-lg:after:absolute max-lg:after:-inset-[13px] max-lg:after:content-['']"
               >
                 <Asset name="dots-horizontal.svg" />
               </button>

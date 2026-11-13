@@ -1,6 +1,14 @@
 "use client"
 
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react"
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react"
 import { cn } from "@/lib/utils"
 import type { FlowNode } from "@/lib/data"
 import { Asset, Chip, Tip } from "./primitives"
@@ -12,6 +20,55 @@ const MIN_ZOOM = 0.25
 const MAX_ZOOM = 2
 
 const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(z * 100) / 100))
+const clampZoomSmooth = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z))
+
+/** Space kept clear around the flow when fitting it to a small screen (toolbar sits at the bottom). */
+const FIT_PAD = { x: 16, top: 24, bottom: 88 }
+
+/** Viewport that shows the whole flow (never zooming in past 100%). Null if nothing is rendered. */
+function fitViewport(canvas: HTMLElement, world: HTMLElement, v: Viewport): Viewport | null {
+  const c = canvas.getBoundingClientRect()
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  world.querySelectorAll("button, img").forEach((el) => {
+    const r = el.getBoundingClientRect()
+    if (!r.width || !r.height) return
+    minX = Math.min(minX, r.left)
+    minY = Math.min(minY, r.top)
+    maxX = Math.max(maxX, r.right)
+    maxY = Math.max(maxY, r.bottom)
+  })
+  if (!Number.isFinite(minX)) return null
+  // screen → world: sx = c.left + width/2 + x + wx·z
+  const toWX = (sx: number) => (sx - c.left - c.width / 2 - v.x) / v.z
+  const toWY = (sy: number) => (sy - c.top - v.y) / v.z
+  const [wx0, wx1, wy0, wy1] = [toWX(minX), toWX(maxX), toWY(minY), toWY(maxY)]
+  const z = clampZoomSmooth(
+    Math.min(1, (c.width - FIT_PAD.x * 2) / (wx1 - wx0), (c.height - FIT_PAD.top - FIT_PAD.bottom) / (wy1 - wy0)),
+  )
+  return { z, x: -((wx0 + wx1) / 2) * z, y: FIT_PAD.top - wy0 * z }
+}
+
+type Point = { x: number; y: number }
+type Gesture = {
+  /** pointers currently down on the canvas, in canvas-local pixels */
+  pointers: Map<number, Point>
+  /** began on empty canvas (a tap there clears the selection) */
+  onEmpty: boolean
+  /** moved past the tap slop, or pinched — suppresses the click/deselect that would follow */
+  moved: boolean
+  start: Point
+  last: Point
+  /** previous two-finger distance + midpoint while pinching */
+  pinch: { dist: number; mid: Point } | null
+}
+
+const pinchOf = (pointers: Map<number, Point>) => {
+  const [a, b] = [...pointers.values()]
+  return { dist: Math.hypot(a.x - b.x, a.y - b.y), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } }
+}
 
 /**
  * Figma 1:5327 — dotted canvas. World origin = horizontal centre of the canvas,
@@ -29,6 +86,7 @@ export function FlowCanvas({
   onUndo,
   onRedo,
   onAskAI,
+  fitOnMount,
   viewport,
   onViewportChange,
 }: {
@@ -43,13 +101,37 @@ export function FlowCanvas({
   onUndo: () => void
   onRedo: () => void
   onAskAI: () => void
+  /** below lg, fit the whole flow on screen when the canvas first appears */
+  fitOnMount: boolean
   viewport: Viewport
   onViewportChange: (v: Viewport | ((v: Viewport) => Viewport)) => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
-  const drag = useRef<{ id: number; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null)
+  const worldRef = useRef<HTMLDivElement>(null)
+  const gesture = useRef<Gesture | null>(null)
+  const suppressClick = useRef(false)
   const [panning, setPanning] = useState(false)
   const { x, y, z } = viewport
+
+  const isSmallScreen = () => !window.matchMedia("(min-width: 1024px)").matches
+
+  /** Show the whole flow (small screens); desktop keeps the Figma 1:1 view. */
+  const resetView = () => {
+    const canvas = ref.current
+    const world = worldRef.current
+    const fit = canvas && world && isSmallScreen() ? fitViewport(canvas, world, viewport) : null
+    onViewportChange(fit ?? DEFAULT_VIEWPORT)
+  }
+
+  // Fit to screen on first load below lg (before paint, so the 1:1 view never flashes)
+  const fitOnMountRef = useRef(fitOnMount)
+  useLayoutEffect(() => {
+    const canvas = ref.current
+    const world = worldRef.current
+    if (!fitOnMountRef.current || !canvas || !world || !isSmallScreen()) return
+    const fit = fitViewport(canvas, world, DEFAULT_VIEWPORT)
+    if (fit) onViewportChange(fit)
+  }, [onViewportChange])
 
   /** Zoom keeping the world point under (fx, fy) fixed — fx/fy in canvas pixels. */
   const zoomAt = (next: number, fx?: number, fy?: number) => {
@@ -91,30 +173,93 @@ export function FlowCanvas({
     return () => el.removeEventListener("wheel", onWheel)
   }, [onViewportChange])
 
-  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return
-    if ((e.target as Element).closest("[data-no-pan]")) return
-    drag.current = { id: e.pointerId, sx: e.clientX, sy: e.clientY, ox: x, oy: y, moved: false }
-    e.currentTarget.setPointerCapture(e.pointerId)
+  /*
+   * Pan + pinch with pointer events. Mouse pans only from empty canvas (nodes and
+   * + buttons stay clickable); touch can pan or pinch starting anywhere except the
+   * toolbar — a tap that didn't move still clicks whatever it landed on.
+   */
+  const local = (e: ReactPointerEvent): Point => {
+    const r = e.currentTarget.getBoundingClientRect()
+    return { x: e.clientX - r.left, y: e.clientY - r.top }
   }
-  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const d = drag.current
-    if (!d || d.id !== e.pointerId) return
-    const dx = e.clientX - d.sx
-    const dy = e.clientY - d.sy
-    if (!d.moved && Math.hypot(dx, dy) < 3) return
-    if (!d.moved) {
-      d.moved = true
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const touch = e.pointerType !== "mouse"
+    if (!touch && e.button !== 0) return
+    const target = e.target as Element
+    if (target.closest("[data-canvas-ui]")) return
+    const onEmpty = !target.closest("[data-no-pan]")
+    if (!touch && !onEmpty) return
+    if (onEmpty) e.currentTarget.setPointerCapture(e.pointerId) // touch on a node is implicitly captured by it
+    const p = local(e)
+    const g = gesture.current ?? { pointers: new Map(), onEmpty, moved: false, start: p, last: p, pinch: null }
+    g.pointers.set(e.pointerId, p)
+    if (g.pointers.size === 1) suppressClick.current = false
+    if (g.pointers.size >= 2) {
+      g.moved = true
+      g.pinch = pinchOf(g.pointers)
       setPanning(true)
     }
-    onViewportChange((v) => ({ ...v, x: d.ox + dx, y: d.oy + dy }))
+    gesture.current = g
+  }
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const g = gesture.current
+    if (!g || !g.pointers.has(e.pointerId)) return
+    const p = local(e)
+    g.pointers.set(e.pointerId, p)
+
+    if (g.pointers.size >= 2 && g.pinch) {
+      const width = e.currentTarget.getBoundingClientRect().width
+      const prev = g.pinch
+      const next = pinchOf(g.pointers)
+      g.pinch = next
+      const ratio = prev.dist > 0 ? next.dist / prev.dist : 1
+      // zoom about the previous midpoint, then follow the midpoint (two-finger pan)
+      onViewportChange((v) => {
+        const nz = clampZoomSmooth(v.z * ratio)
+        const wx = (prev.mid.x - width / 2 - v.x) / v.z
+        const wy = (prev.mid.y - v.y) / v.z
+        return { z: nz, x: next.mid.x - width / 2 - wx * nz, y: next.mid.y - wy * nz }
+      })
+      return
+    }
+
+    const slop = e.pointerType === "mouse" ? 3 : 8
+    if (!g.moved && Math.hypot(p.x - g.start.x, p.y - g.start.y) < slop) return
+    if (!g.moved) {
+      g.moved = true
+      g.last = g.start
+      setPanning(true)
+    }
+    const dx = p.x - g.last.x
+    const dy = p.y - g.last.y
+    g.last = p
+    onViewportChange((v) => ({ ...v, x: v.x + dx, y: v.y + dy }))
   }
   const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const d = drag.current
-    if (!d || d.id !== e.pointerId) return
-    drag.current = null
+    const g = gesture.current
+    if (!g || !g.pointers.has(e.pointerId)) return
+    g.pointers.delete(e.pointerId)
+    if (g.pointers.size === 1) {
+      // pinch → one finger left: keep panning from where it is
+      g.pinch = null
+      g.last = [...g.pointers.values()][0]
+      return
+    }
+    if (g.pointers.size > 1) {
+      g.pinch = pinchOf(g.pointers)
+      return
+    }
+    gesture.current = null
     setPanning(false)
-    if (!d.moved) onSelect(null) // click on empty canvas clears the selection
+    suppressClick.current = g.moved
+    if (!g.moved && g.onEmpty) onSelect(null) // click on empty canvas clears the selection
+  }
+  // A pan or pinch that began on a node must not also select it (keyboard clicks have detail 0)
+  const onClickCapture = (e: ReactMouseEvent) => {
+    if (!suppressClick.current || e.detail === 0) return
+    suppressClick.current = false
+    e.preventDefault()
+    e.stopPropagation()
   }
 
   // Dot grid (216.reversible tiles): 2px dots, 18px pitch, #282828 @ 20%, anchored to the world.
@@ -136,10 +281,12 @@ export function FlowCanvas({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onClickCapture={onClickCapture}
       aria-label="Flow editor canvas"
       role="application"
     >
       <div
+        ref={worldRef}
         className="absolute top-0 left-1/2 origin-top-left will-change-transform"
         style={{ transform: `translate(${x}px, ${y}px) scale(${z})` }}
       >
@@ -167,7 +314,7 @@ export function FlowCanvas({
         zoom={z}
         onZoomOut={() => zoomAt(z - 0.1)}
         onZoomIn={() => zoomAt(z + 0.1)}
-        onReset={() => onViewportChange(DEFAULT_VIEWPORT)}
+        onReset={resetView}
         canUndo={canUndo}
         canRedo={canRedo}
         onUndo={onUndo}
@@ -177,6 +324,9 @@ export function FlowCanvas({
     </div>
   )
 }
+
+/** Touch screens: grow the + buttons' hit area to 48px (world px) without moving the drawn icon. */
+const TOUCH_HIT = "[@media(pointer:coarse)]:before:absolute [@media(pointer:coarse)]:before:-inset-3 [@media(pointer:coarse)]:before:rounded-full [@media(pointer:coarse)]:before:content-['']"
 
 /** One node plus whatever hangs below it (connector, route label + branch, or the add button). */
 function Segment({
@@ -216,7 +366,7 @@ function Segment({
               data-no-pan
               aria-label="Add a step after this node"
               onClick={onAdd}
-              className="absolute top-[69px] left-0 size-6 cursor-pointer rounded-full transition-colors duration-150 hover:bg-(--ea-blue-soft)"
+              className={cn("absolute top-[69px] left-0 size-6 cursor-pointer rounded-full transition-colors duration-150 hover:bg-(--ea-blue-soft)", TOUCH_HIT)}
             />
           </Tip>
         </div>
@@ -272,7 +422,7 @@ function Branch({
           data-no-pan
           aria-label="Add a step to the escalation route"
           onClick={onAdd}
-          className="absolute top-[33px] left-[176px] size-6 cursor-pointer rounded-full transition-colors duration-150 hover:bg-(--ea-blue-soft)"
+          className={cn("absolute top-[33px] left-[176px] size-6 cursor-pointer rounded-full transition-colors duration-150 hover:bg-(--ea-blue-soft)", TOUCH_HIT)}
         />
       </Tip>
       {nodes.length > 0 && (

@@ -34,7 +34,6 @@ export default function AppleIcon() {
             background: TEAL,
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={MAIL_SRC} width={72} height={72} alt="" />
         </div>
       </div>

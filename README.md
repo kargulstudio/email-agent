@@ -28,6 +28,7 @@ Other scripts: `pnpm build` · `pnpm start` · `pnpm lint`
 - **Canvas**: click a node to select it, and use the + buttons to add steps. Drag or scroll to pan; zoom with −/+ or <kbd>⌘</kbd>+wheel
 - **Undo / redo** for adding and selecting nodes (toolbar or <kbd>⌘Z</kbd> / <kbd>⇧⌘Z</kbd>)
 - **Publish changes** flips Draft to Published; **Ask AI** focuses the composer
+- **Mobile and tablet** (below 1024px): a compact top bar (actions in a "…" menu), the AI Assistant as a full-height sheet, and a canvas that fits to the screen with touch pan and pinch-zoom
 - No real AI calls are made
 
 ## Stack

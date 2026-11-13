@@ -66,7 +66,7 @@ export function Tip({
   )
 }
 
-/** 30×30 raised icon button (Figma "Frame 2147291027" etc.). */
+/** 30×30 raised icon button (Figma "Frame 2147291027" etc.); 40×40 touch target below lg. */
 export function IconButton({
   icon,
   label,
@@ -76,7 +76,7 @@ export function IconButton({
 }: Omit<ComponentProps<"button">, "children"> & { icon: string; label: string; side?: "top" | "bottom" }) {
   return (
     <Tip label={label} side={side}>
-      <button type="button" aria-label={label} className={cn("ea-control size-[30px] p-2", className)} {...props}>
+      <button type="button" aria-label={label} className={cn("ea-control size-[30px] p-2 max-lg:size-10", className)} {...props}>
         <Asset name={icon} />
       </button>
     </Tip>
