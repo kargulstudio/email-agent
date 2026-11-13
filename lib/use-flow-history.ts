@@ -33,6 +33,7 @@ type Action =
   | { type: "select"; id: string | null }
   | { type: "add"; where: "main" | "branch" }
   | { type: "move"; id: string; offset: Offset }
+  | { type: "tidy" }
   | { type: "undo" }
   | { type: "redo" }
 
@@ -77,6 +78,9 @@ function reducer(h: History, action: Action): History {
       if (same && s.selectedId === action.id) return h
       return commit(h, { ...s, offsets: withOffset(s.offsets, action.id, action.offset), selectedId: action.id })
     }
+    case "tidy":
+      if (!Object.keys(s.offsets).length) return h
+      return commit(h, { ...s, offsets: {} })
     case "undo": {
       if (!h.past.length) return h
       const prev = h.past[h.past.length - 1]
@@ -90,7 +94,7 @@ function reducer(h: History, action: Action): History {
   }
 }
 
-/** Undoable flow state: node additions, selection changes, and node moves. */
+/** Undoable flow state: node additions, selection changes, node moves and tidy-ups. */
 export function useFlowHistory() {
   const [history, dispatch] = useReducer(reducer, initial)
 
@@ -98,6 +102,7 @@ export function useFlowHistory() {
   const addMain = useCallback(() => dispatch({ type: "add", where: "main" }), [])
   const addBranch = useCallback(() => dispatch({ type: "add", where: "branch" }), [])
   const move = useCallback((id: string, offset: Offset) => dispatch({ type: "move", id, offset }), [])
+  const tidy = useCallback(() => dispatch({ type: "tidy" }), [])
   const undo = useCallback(() => dispatch({ type: "undo" }), [])
   const redo = useCallback(() => dispatch({ type: "redo" }), [])
 
@@ -109,6 +114,7 @@ export function useFlowHistory() {
     addMain,
     addBranch,
     move,
+    tidy,
     undo,
     redo,
   }

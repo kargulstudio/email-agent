@@ -30,7 +30,8 @@ Other scripts: `pnpm build` · `pnpm start` · `pnpm lint`
   - Moves snap to the 18px dot grid. Hold <kbd>⌥</kbd>/<kbd>Alt</kbd> while dragging to place freely, and press <kbd>Esc</kbd> to cancel
   - <kbd>⌥</kbd>+arrow keys nudge the focused or selected node one grid step (<kbd>⇧⌥</kbd>+arrows: four)
   - Connectors, the "Need to escalate" route and the + buttons follow live, re-routed as rounded right-angle paths (around the nodes when a step sits above the one before it)
-- **Undo / redo** for adding, selecting and moving nodes (toolbar or <kbd>⌘Z</kbd> / <kbd>⇧⌘Z</kbd>)
+  - **Tidy up** in the canvas toolbar glides every node back to its original place
+- **Undo / redo** for adding, selecting and moving nodes, and for Tidy up (toolbar or <kbd>⌘Z</kbd> / <kbd>⇧⌘Z</kbd>)
 - **Publish changes** flips Draft to Published; **Ask AI** focuses the composer
 - **Mobile and tablet** (below 1024px): a compact top bar (actions in a "…" menu), the AI Assistant as a full-height sheet, and a canvas that fits to the screen with touch pan and pinch-zoom
 - No real AI calls are made
@@ -50,7 +51,7 @@ Other scripts: `pnpm build` · `pnpm start` · `pnpm lint`
 | [`components/top-bar.tsx`](components/top-bar.tsx) | Agent name, tabs, Share, Test and Publish |
 | [`components/assistant-panel.tsx`](components/assistant-panel.tsx) | AI Assistant thread, changelog and composer |
 | [`components/flow-canvas.tsx`](components/flow-canvas.tsx) | Flow nodes, connectors, pan and zoom, node dragging |
-| [`components/canvas-toolbar.tsx`](components/canvas-toolbar.tsx) | Zoom, undo/redo and Ask AI |
+| [`components/canvas-toolbar.tsx`](components/canvas-toolbar.tsx) | Zoom, undo/redo, Tidy up and Ask AI |
 | [`components/placeholder-panels.tsx`](components/placeholder-panels.tsx) | Settings and Tasks tabs |
 | [`components/primitives.tsx`](components/primitives.tsx) | Shared buttons and icons |
 | [`lib/data.ts`](lib/data.ts) | Mock flow, changelog, tasks and canned replies |

@@ -85,7 +85,7 @@ const pinchOf = (pointers: Map<number, Point>) => {
 export const GRID = 18
 /** Touch: press and hold this long on a node to pick it up (a plain drag pans). */
 const HOLD_MS = 300
-/** Undo / redo glide nodes (and their connectors) to their new place. */
+/** Tidy up / undo / redo glide nodes (and their connectors) to their new place. */
 const SETTLE_MS = 240
 /** Pressing these parts of a node selects it but never starts a drag. */
 const NO_DRAG = ".ea-chip, .ea-app-icon, [data-no-drag]"
@@ -225,6 +225,7 @@ export function FlowCanvas({
   offsets,
   onSelect,
   onMove,
+  onTidy,
   onAddMain,
   onAddBranch,
   canUndo,
@@ -244,6 +245,7 @@ export function FlowCanvas({
   onSelect: (id: string | null) => void
   /** commit a finished drag / nudge (one undo step; also selects the node) */
   onMove: (id: string, offset: Offset) => void
+  onTidy: () => void
   onAddMain: () => void
   onAddBranch: () => void
   canUndo: boolean
@@ -272,8 +274,8 @@ export function FlowCanvas({
   const settled = settle.t >= 1 ? settle.to : lerpOffsets(settle.from, settle.to, easeOut(settle.t))
   const shown: Offsets = live ? { ...settled, [live.id]: live.offset } : settled
   if (target !== offsets) {
-    // Committed offsets changed (drop, nudge, undo/redo): glide from what is on screen now.
-    // A drop starts from the dropped position, so it doesn’t move; undo and redo animate.
+    // Committed offsets changed (drop, nudge, tidy, undo/redo): glide from what is on screen now.
+    // A drop starts from the dropped position, so it doesn't move; Tidy up and undo animate.
     setTarget(offsets)
     setSettle({ from: shown, to: offsets, t: reduceMotion ? 1 : 0, start: null })
     if (live?.released) setLive(null)
@@ -726,6 +728,8 @@ export function FlowCanvas({
         canRedo={canRedo}
         onUndo={onUndo}
         onRedo={onRedo}
+        canTidy={Object.keys(offsets).length > 0}
+        onTidy={onTidy}
         onAskAI={onAskAI}
       />
     </div>

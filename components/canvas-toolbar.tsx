@@ -1,10 +1,12 @@
 "use client"
 
+import { AlignCenterVerticalIcon } from "lucide-react"
 import { IconButton, PrimaryButton, Tip } from "./primitives"
 
 /**
  * Figma 1:9711 — floating zoom / history / Ask AI bar, 24px above the canvas bottom.
  * Compact below lg (40px targets, tighter padding); phones pinch to zoom, so −/+ hide below sm.
+ * Tidy up puts every moved node back in its computed place (disabled until something moved).
  */
 export function CanvasToolbar({
   zoom,
@@ -15,6 +17,8 @@ export function CanvasToolbar({
   canRedo,
   onUndo,
   onRedo,
+  canTidy,
+  onTidy,
   onAskAI,
 }: {
   zoom: number
@@ -25,6 +29,8 @@ export function CanvasToolbar({
   canRedo: boolean
   onUndo: () => void
   onRedo: () => void
+  canTidy: boolean
+  onTidy: () => void
   onAskAI: () => void
 }) {
   return (
@@ -50,6 +56,17 @@ export function CanvasToolbar({
       <span aria-hidden className="h-3 w-px bg-(--ea-divider)" />
       <IconButton icon="reverse-left.svg" label="Undo (⌘Z)" side="top" onClick={onUndo} aria-disabled={!canUndo} />
       <IconButton icon="reverse-right.svg" label="Redo (⇧⌘Z)" side="top" onClick={onRedo} aria-disabled={!canRedo} />
+      <Tip label={canTidy ? "Tidy up" : "Tidy up (nothing moved)"} side="top">
+        <button
+          type="button"
+          aria-label="Tidy up: reset node positions"
+          aria-disabled={!canTidy}
+          onClick={() => canTidy && onTidy()}
+          className="ea-control size-[30px] p-2 max-lg:size-10 aria-disabled:cursor-default aria-disabled:opacity-50"
+        >
+          <AlignCenterVerticalIcon aria-hidden className="size-3.5 text-[#a2a2a2]" strokeWidth={2} />
+        </button>
+      </Tip>
       <span aria-hidden className="h-3 w-px bg-(--ea-divider)" />
       <PrimaryButton icon="stars-01-ask.svg" onClick={onAskAI} className="max-lg:h-10">
         Ask AI
