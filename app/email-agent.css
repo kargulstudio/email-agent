@@ -1,0 +1,310 @@
+/*
+ * Email Agent route (Figma ZKxOvLKOz4VYG21iEqjG4l · node 1:5204)
+ * Route-scoped tokens + recipes. Everything lives under `.email-agent` so it
+ * never leaks into the other prototypes sharing app/globals.css.
+ */
+
+/* Recipes live in the components layer so Tailwind utilities can still override them. */
+@layer components {
+  .email-agent {
+    /* Surfaces */
+    --ea-page: #ffffff; /* 2px white seams between regions */
+    --ea-bar: #f5f5f5; /* top bar */
+    --ea-panel: #fafafa; /* AI assistant panel */
+    --ea-canvas: #f5f5f5; /* flow canvas */
+    --ea-node: #ffffff;
+    --ea-segment: #ededed; /* segmented control track */
+
+    /* Lines */
+    --ea-line: #ececec;
+    --ea-divider: #e7e7e7;
+    --ea-chip-line: #eeeeee; /* bordered app-icon boxes (Gmail / Slack) */
+    --ea-dot: rgba(40, 40, 40, 0.2); /* dot.svg: #282828 @ 20% */
+
+    /* Foreground */
+    --ea-fg-title: #121212;
+    --ea-fg-node: #1d1d1d;
+    --ea-fg-body: #22222a;
+    --ea-fg: #282828;
+    --ea-fg-muted: #757575;
+    --ea-fg-placeholder: #a8a8a8;
+    --ea-icon-tab: #969696;
+
+    /* Accents */
+    --ea-blue: #1da6f6;
+    --ea-blue-hover: #1898e3;
+    --ea-blue-soft: rgba(29, 166, 246, 0.12);
+    --ea-blue-ring: rgba(29, 166, 246, 0.45);
+    --ea-amber-soft: rgba(246, 179, 15, 0.12);
+    --ea-teal: #14b398;
+    --ea-teal-soft: rgba(20, 179, 152, 0.12);
+    --ea-orange: #f77138;
+    --ea-violet: #8b5cf6;
+
+    /* Elevation (exact Figma effects) */
+    --ea-shadow-control: 0px 1px 2px 0px rgba(40, 40, 40, 0.08), 0px 0px 0px 1px var(--ea-line);
+    --ea-shadow-node: 0px 0px 0px 1px var(--ea-line);
+    --ea-shadow-toolbar: 0px 1px 4px 0px rgba(0, 0, 0, 0.02), 0px 4px 12px 0px rgba(0, 0, 0, 0.04);
+    --ea-shadow-primary: 0px 0px 0px 1px var(--ea-blue), 0px 4px 4px -3px rgba(29, 166, 246, 0.4),
+      0px 2px 4px 0px rgba(29, 166, 246, 0.12), inset 0px -2px 3px 0px rgba(0, 0, 0, 0.08),
+      inset 0px 0px 0px 1px rgba(255, 255, 255, 0.12);
+    --ea-shadow-chip: 0px 2px 4px 0px rgba(9, 9, 11, 0.16), 0px 1px 2px 0px rgba(9, 9, 11, 0.08);
+
+    --ea-ease: cubic-bezier(0.23, 1, 0.32, 1);
+
+    background: var(--ea-page);
+    color: var(--ea-fg);
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "salt" 1;
+  }
+
+  /* ---------------------------------------------------------------------------
+   * Raised control: white → #f7f7f7 gradient, 1px #ececec ring, r10.
+   * Hover/press tint is a layer behind the content (no scale, no bounce).
+   * ------------------------------------------------------------------------ */
+  .email-agent .ea-control {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: clip;
+    border-radius: 10px;
+    background: linear-gradient(to bottom, #ffffff, #f7f7f7);
+    box-shadow: var(--ea-shadow-control);
+    color: var(--ea-fg-muted);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .email-agent .ea-control::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: rgba(9, 9, 11, 0.035);
+    opacity: 0;
+    transition: opacity 120ms var(--ea-ease);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .email-agent .ea-control:hover::before {
+      opacity: 1;
+    }
+  }
+  .email-agent .ea-control:active::before,
+  .email-agent .ea-control[aria-expanded="true"]::before,
+  .email-agent .ea-control[data-popup-open]::before {
+    opacity: 1;
+    background: rgba(9, 9, 11, 0.06);
+  }
+  .email-agent .ea-control:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  /* Blue primary (Publish changes / Ask AI) */
+  .email-agent .ea-primary {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex-shrink: 0;
+    overflow: clip;
+    height: 30px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--ea-blue);
+    box-shadow: var(--ea-shadow-primary);
+    color: #ffffff;
+    cursor: pointer;
+    transition: background-color 120ms var(--ea-ease), opacity 120ms var(--ea-ease);
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .email-agent .ea-primary:not(:disabled):hover {
+      background: var(--ea-blue-hover);
+    }
+  }
+  .email-agent .ea-primary:not(:disabled):active {
+    background: #1690d8;
+  }
+  .email-agent .ea-primary:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+  /* Ellipse 41743 — soft white glow at the top edge (button-glow.svg, 128×62) */
+  .email-agent .ea-glow {
+    position: absolute;
+    top: -35px;
+    left: calc(50% - 64px);
+    width: 128px;
+    height: 62px;
+    max-width: none;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Coloured square icon chip with white inner edge + glow */
+  .email-agent .ea-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: clip;
+    background: var(--chip, var(--ea-blue));
+    box-shadow: var(--ea-shadow-chip), 0px 0px 0px 1px var(--chip, var(--ea-blue)),
+      inset 0px 0px 0px 1px rgba(255, 255, 255, 0.16), inset 0px 1px 20px 0px rgba(255, 255, 255, 0.16);
+  }
+
+  /* Bordered app-icon box (Gmail / Slack) — Figma inside stroke, so the box stays 24×24 */
+  .email-agent .ea-app-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: inset 0px 0px 0px 1px var(--ea-chip-line);
+  }
+
+  /* Single-colour icon from a Figma SVG used as a mask, tinted via currentColor */
+  .email-agent .ea-mask-icon {
+    display: inline-block;
+    flex-shrink: 0;
+    background-color: currentColor;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: 100% 100%;
+  }
+
+  /* ---------------------------------------------------------------------------
+   * Flow nodes
+   * ------------------------------------------------------------------------ */
+  .email-agent .ea-node {
+    position: relative;
+    border-radius: 16px;
+    background: var(--ea-node);
+    box-shadow: var(--ea-shadow-node);
+    cursor: pointer;
+    transition: box-shadow 150ms var(--ea-ease);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .email-agent .ea-node:hover {
+      box-shadow: 0px 0px 0px 1px #dedede, 0px 2px 6px 0px rgba(40, 40, 40, 0.06);
+    }
+  }
+  /* Selection halo — Figma 1:9780: 8px out, r24, 12% blue fill, 1px #1DA6F6 (inside) */
+  .email-agent .ea-node::before {
+    content: "";
+    position: absolute;
+    inset: -8px;
+    z-index: -1;
+    border-radius: 24px;
+    background: var(--ea-blue-soft);
+    box-shadow: inset 0px 0px 0px 1px var(--ea-blue);
+    opacity: 0;
+    transition: opacity 150ms var(--ea-ease);
+    pointer-events: none;
+  }
+  /* Agent cards (1:9781) add a 1.4px white inner edge */
+  .email-agent .ea-node.ea-node-agent {
+    box-shadow: inset 0px 0px 0px 1.4px #ffffff, var(--ea-shadow-node);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .email-agent .ea-node.ea-node-agent:hover {
+      box-shadow: inset 0px 0px 0px 1.4px #ffffff, 0px 0px 0px 1px #dedede, 0px 2px 6px 0px rgba(40, 40, 40, 0.06);
+    }
+  }
+  .email-agent .ea-node[aria-pressed="true"]::before {
+    opacity: 1;
+  }
+  .email-agent .ea-node:focus-visible {
+    outline: 2px solid var(--ea-blue-ring);
+    outline-offset: 10px;
+  }
+
+  /* New nodes fade in where they land (rare, user-initiated → allowed to move) */
+  .email-agent .ea-pop-in {
+    animation: ea-pop-in 220ms var(--ea-ease) both;
+  }
+  @keyframes ea-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Chat messages slide up a hair */
+  .email-agent .ea-msg-in {
+    animation: ea-msg-in 200ms var(--ea-ease) both;
+  }
+  @keyframes ea-msg-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Typing indicator */
+  .email-agent .ea-typing span {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--ea-fg-placeholder);
+    animation: ea-typing 1s ease-in-out infinite;
+  }
+  .email-agent .ea-typing span:nth-child(2) {
+    animation-delay: 150ms;
+  }
+  .email-agent .ea-typing span:nth-child(3) {
+    animation-delay: 300ms;
+  }
+  @keyframes ea-typing {
+    0%,
+    60%,
+    100% {
+      opacity: 0.35;
+    }
+    30% {
+      opacity: 1;
+    }
+  }
+
+  /* Canvas grab cursor while panning */
+  .email-agent .ea-canvas {
+    cursor: grab;
+    touch-action: none;
+  }
+  .email-agent .ea-canvas[data-panning="true"] {
+    cursor: grabbing;
+  }
+
+  /* Hidden scrollbar: a gutter would narrow the text column and change Figma's line wraps */
+  .email-agent .ea-scroll {
+    scrollbar-width: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .email-agent .ea-pop-in,
+    .email-agent .ea-msg-in {
+      animation: none;
+    }
+  }
+}
