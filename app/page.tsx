@@ -1,3 +1,5 @@
-export default function Page() {
-  return <main className="grid h-full place-items-center text-sm text-fg-muted">Email Agent — coming soon</main>
+import { EmailAgentApp } from "@/components/email-agent-app"
+
+export default function EmailAgentPage() {
+  return <EmailAgentApp />
 }
