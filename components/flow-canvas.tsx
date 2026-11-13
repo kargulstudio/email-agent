@@ -28,6 +28,7 @@ const FIT_PAD = { x: 16, top: 24, bottom: 88 }
 /** Viewport that shows the whole flow (never zooming in past 100%). Null if nothing is rendered. */
 function fitViewport(canvas: HTMLElement, world: HTMLElement, v: Viewport): Viewport | null {
   const c = canvas.getBoundingClientRect()
+  if (c.width < 1 || c.height < 1) return null // not laid out yet (hidden / background tab)
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity
@@ -123,14 +124,32 @@ export function FlowCanvas({
     onViewportChange(fit ?? DEFAULT_VIEWPORT)
   }
 
-  // Fit to screen on first load below lg (before paint, so the 1:1 view never flashes)
+  /*
+   * Fit to screen on first load below lg (before paint, so the 1:1 view never flashes).
+   * A cold load in a hidden or background tab can lay the canvas out at 0×0 (and report
+   * matchMedia(lg) false), which would clamp the fit to the minimum zoom and stick. So
+   * wait for a real size, and only count the canvas as fitted once one arrives.
+   */
   const fitOnMountRef = useRef(fitOnMount)
   useLayoutEffect(() => {
     const canvas = ref.current
-    const world = worldRef.current
-    if (!fitOnMountRef.current || !canvas || !world || !isSmallScreen()) return
-    const fit = fitViewport(canvas, world, DEFAULT_VIEWPORT)
-    if (fit) onViewportChange(fit)
+    if (!fitOnMountRef.current || !canvas) return
+    const fitOnce = (width: number, height: number) => {
+      const world = worldRef.current
+      if (width < 1 || height < 1 || !world) return false
+      fitOnMountRef.current = false
+      if (!isSmallScreen()) return true
+      const fit = fitViewport(canvas, world, DEFAULT_VIEWPORT)
+      if (fit) onViewportChange(fit)
+      return true
+    }
+    const { width, height } = canvas.getBoundingClientRect()
+    if (fitOnce(width, height)) return
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry && fitOnce(entry.contentRect.width, entry.contentRect.height)) ro.disconnect()
+    })
+    ro.observe(canvas)
+    return () => ro.disconnect()
   }, [onViewportChange])
 
   /** Zoom keeping the world point under (fx, fy) fixed — fx/fy in canvas pixels. */
