@@ -194,8 +194,22 @@
     border-radius: 16px;
     background: var(--ea-node);
     box-shadow: var(--ea-shadow-node);
+    cursor: grab; /* the body drags; a click still selects */
+    transition: box-shadow 150ms var(--ea-ease), scale 150ms var(--ea-ease);
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+  .email-agent .ea-node :is(.ea-chip, .ea-app-icon) {
     cursor: pointer;
-    transition: box-shadow 150ms var(--ea-ease);
+  }
+  /* Picked up (mouse drag, or a touch hold registering): lift off the canvas */
+  .email-agent .ea-node[data-lifted] {
+    scale: 1.02;
+    box-shadow: 0px 0px 0px 1px #dedede, 0px 4px 8px 0px rgba(40, 40, 40, 0.06), 0px 16px 32px -8px rgba(40, 40, 40, 0.18);
+  }
+  .email-agent .ea-node.ea-node-agent[data-lifted] {
+    box-shadow: inset 0px 0px 0px 1.4px #ffffff, 0px 0px 0px 1px #dedede, 0px 4px 8px 0px rgba(40, 40, 40, 0.06),
+      0px 16px 32px -8px rgba(40, 40, 40, 0.18);
   }
   @media (hover: hover) and (pointer: fine) {
     .email-agent .ea-node:hover {
@@ -292,7 +306,9 @@
     cursor: grab;
     touch-action: none;
   }
-  .email-agent .ea-canvas[data-panning="true"] {
+  .email-agent .ea-canvas[data-panning="true"],
+  .email-agent .ea-canvas[data-dragging="true"],
+  .email-agent .ea-canvas[data-dragging="true"] * {
     cursor: grabbing;
   }
 
@@ -302,6 +318,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .email-agent .ea-node {
+      transition: box-shadow 150ms var(--ea-ease);
+    }
     .email-agent .ea-pop-in,
     .email-agent .ea-msg-in {
       animation: none;

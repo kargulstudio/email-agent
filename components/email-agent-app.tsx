@@ -199,7 +199,9 @@ export function EmailAgentApp() {
               nodes={flow.state.nodes}
               branch={flow.state.branch}
               selectedId={flow.state.selectedId}
+              offsets={flow.state.offsets}
               onSelect={flow.select}
+              onMove={flow.move}
               onAddMain={flow.addMain}
               onAddBranch={flow.addBranch}
               canUndo={flow.canUndo}

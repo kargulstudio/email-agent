@@ -9,11 +9,20 @@ import {
   type FlowNode,
 } from "@/lib/data"
 
+/** A user drag, in world px, added to a node's computed position. */
+export type Offset = { x: number; y: number }
+/** Offsets keyed by node id. Nodes that were never moved (or were tidied) have no entry. */
+export type Offsets = Readonly<Record<string, Offset>>
+
+export const ZERO: Offset = { x: 0, y: 0 }
+export const sameOffset = (a: Offset, b: Offset) => a.x === b.x && a.y === b.y
+
 export type FlowState = {
   nodes: FlowNode[]
   /** Nodes hanging off the condition's dashed "Need to escalate" branch. */
   branch: FlowNode[]
   selectedId: string | null
+  offsets: Offsets
   /** Monotonic counter so every added node gets a stable, unique id. */
   seq: number
 }
@@ -23,6 +32,7 @@ type History = { past: FlowState[]; present: FlowState; future: FlowState[] }
 type Action =
   | { type: "select"; id: string | null }
   | { type: "add"; where: "main" | "branch" }
+  | { type: "move"; id: string; offset: Offset }
   | { type: "undo" }
   | { type: "redo" }
 
@@ -30,12 +40,19 @@ const LIMIT = 100
 
 const initial: History = {
   past: [],
-  present: { nodes: INITIAL_NODES, branch: [], selectedId: INITIAL_SELECTED, seq: 0 },
+  present: { nodes: INITIAL_NODES, branch: [], selectedId: INITIAL_SELECTED, offsets: {}, seq: 0 },
   future: [],
 }
 
 function commit(h: History, next: FlowState): History {
   return { past: [...h.past, h.present].slice(-LIMIT), present: next, future: [] }
+}
+
+function withOffset(offsets: Offsets, id: string, offset: Offset): Offsets {
+  const next: Record<string, Offset> = { ...offsets }
+  if (sameOffset(offset, ZERO)) delete next[id]
+  else next[id] = offset
+  return next
 }
 
 function reducer(h: History, action: Action): History {
@@ -54,6 +71,12 @@ function reducer(h: History, action: Action): History {
       const tpl = BRANCH_TEMPLATES[s.branch.length % BRANCH_TEMPLATES.length]
       return commit(h, { ...s, seq, branch: [...s.branch, { ...tpl, id }], selectedId: id })
     }
+    case "move": {
+      // One drag (or nudge) = one step; moving a node also selects it
+      const same = sameOffset(s.offsets[action.id] ?? ZERO, action.offset)
+      if (same && s.selectedId === action.id) return h
+      return commit(h, { ...s, offsets: withOffset(s.offsets, action.id, action.offset), selectedId: action.id })
+    }
     case "undo": {
       if (!h.past.length) return h
       const prev = h.past[h.past.length - 1]
@@ -67,13 +90,14 @@ function reducer(h: History, action: Action): History {
   }
 }
 
-/** Undoable flow state: node additions and selection changes. */
+/** Undoable flow state: node additions, selection changes, and node moves. */
 export function useFlowHistory() {
   const [history, dispatch] = useReducer(reducer, initial)
 
   const select = useCallback((id: string | null) => dispatch({ type: "select", id }), [])
   const addMain = useCallback(() => dispatch({ type: "add", where: "main" }), [])
   const addBranch = useCallback(() => dispatch({ type: "add", where: "branch" }), [])
+  const move = useCallback((id: string, offset: Offset) => dispatch({ type: "move", id, offset }), [])
   const undo = useCallback(() => dispatch({ type: "undo" }), [])
   const redo = useCallback(() => dispatch({ type: "redo" }), [])
 
@@ -84,6 +108,7 @@ export function useFlowHistory() {
     select,
     addMain,
     addBranch,
+    move,
     undo,
     redo,
   }

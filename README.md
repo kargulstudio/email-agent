@@ -25,8 +25,12 @@ Other scripts: `pnpm build` · `pnpm start` · `pnpm lint`
 
 - **Tabs**: Flow editor, Settings and Tasks
 - **AI Assistant**: send a message (<kbd>Enter</kbd>) to get a typing indicator and a canned reply. The panel closes and reopens from the menu button
-- **Canvas**: click a node to select it, and use the + buttons to add steps. Drag or scroll to pan; zoom with −/+ or <kbd>⌘</kbd>+wheel
-- **Undo / redo** for adding and selecting nodes (toolbar or <kbd>⌘Z</kbd> / <kbd>⇧⌘Z</kbd>)
+- **Canvas**: click a node to select it, and use the + buttons to add steps. Drag empty canvas or scroll to pan; zoom with −/+ or <kbd>⌘</kbd>+wheel
+- **Move nodes**: drag a node by its body (not its icons) to put it anywhere. On touch, press and hold a node for about 300ms, then drag; a one-finger drag that starts right away still pans
+  - Moves snap to the 18px dot grid. Hold <kbd>⌥</kbd>/<kbd>Alt</kbd> while dragging to place freely, and press <kbd>Esc</kbd> to cancel
+  - <kbd>⌥</kbd>+arrow keys nudge the focused or selected node one grid step (<kbd>⇧⌥</kbd>+arrows: four)
+  - Connectors, the "Need to escalate" route and the + buttons follow live, re-routed as rounded right-angle paths (around the nodes when a step sits above the one before it)
+- **Undo / redo** for adding, selecting and moving nodes (toolbar or <kbd>⌘Z</kbd> / <kbd>⇧⌘Z</kbd>)
 - **Publish changes** flips Draft to Published; **Ask AI** focuses the composer
 - **Mobile and tablet** (below 1024px): a compact top bar (actions in a "…" menu), the AI Assistant as a full-height sheet, and a canvas that fits to the screen with touch pan and pinch-zoom
 - No real AI calls are made
@@ -45,9 +49,10 @@ Other scripts: `pnpm build` · `pnpm start` · `pnpm lint`
 | [`components/email-agent-app.tsx`](components/email-agent-app.tsx) | App shell and state |
 | [`components/top-bar.tsx`](components/top-bar.tsx) | Agent name, tabs, Share, Test and Publish |
 | [`components/assistant-panel.tsx`](components/assistant-panel.tsx) | AI Assistant thread, changelog and composer |
-| [`components/flow-canvas.tsx`](components/flow-canvas.tsx) | Flow nodes, connectors, pan and zoom |
+| [`components/flow-canvas.tsx`](components/flow-canvas.tsx) | Flow nodes, connectors, pan and zoom, node dragging |
 | [`components/canvas-toolbar.tsx`](components/canvas-toolbar.tsx) | Zoom, undo/redo and Ask AI |
 | [`components/placeholder-panels.tsx`](components/placeholder-panels.tsx) | Settings and Tasks tabs |
 | [`components/primitives.tsx`](components/primitives.tsx) | Shared buttons and icons |
 | [`lib/data.ts`](lib/data.ts) | Mock flow, changelog, tasks and canned replies |
-| [`lib/use-flow-history.ts`](lib/use-flow-history.ts) | Undo/redo history for the flow |
+| [`lib/use-flow-history.ts`](lib/use-flow-history.ts) | Undo/redo history for the flow, including node offsets |
+| [`lib/flow-routing.ts`](lib/flow-routing.ts) | Right-angle connector routing with rounded corners |
