@@ -1,0 +1,348 @@
+"use client"
+
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react"
+import { cn } from "@/lib/utils"
+import type { FlowNode } from "@/lib/data"
+import { Asset, Chip, Tip } from "./primitives"
+import { CanvasToolbar } from "./canvas-toolbar"
+
+export type Viewport = { x: number; y: number; z: number }
+export const DEFAULT_VIEWPORT: Viewport = { x: 0, y: 0, z: 1 }
+const MIN_ZOOM = 0.25
+const MAX_ZOOM = 2
+
+const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(z * 100) / 100))
+
+/**
+ * Figma 1:5327 — dotted canvas. World origin = horizontal centre of the canvas,
+ * top edge; the node column is 328px wide and starts 172.33px down (as in Figma).
+ */
+export function FlowCanvas({
+  nodes,
+  branch,
+  selectedId,
+  onSelect,
+  onAddMain,
+  onAddBranch,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  onAskAI,
+  viewport,
+  onViewportChange,
+}: {
+  nodes: FlowNode[]
+  branch: FlowNode[]
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+  onAddMain: () => void
+  onAddBranch: () => void
+  canUndo: boolean
+  canRedo: boolean
+  onUndo: () => void
+  onRedo: () => void
+  onAskAI: () => void
+  viewport: Viewport
+  onViewportChange: (v: Viewport | ((v: Viewport) => Viewport)) => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ id: number; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null)
+  const [panning, setPanning] = useState(false)
+  const { x, y, z } = viewport
+
+  /** Zoom keeping the world point under (fx, fy) fixed — fx/fy in canvas pixels. */
+  const zoomAt = (next: number, fx?: number, fy?: number) => {
+    const el = ref.current
+    if (!el) return
+    const { width, height } = el.getBoundingClientRect()
+    const px = fx ?? width / 2
+    const py = fy ?? height / 2
+    onViewportChange((v) => {
+      const nz = clampZoom(next)
+      const wx = (px - width / 2 - v.x) / v.z
+      const wy = (py - v.y) / v.z
+      return { z: nz, x: px - width / 2 - wx * nz, y: py - wy * nz }
+    })
+  }
+
+  // Wheel: scroll pans, ⌘/Ctrl + wheel (and trackpad pinch) zooms. Needs a non-passive listener.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = el.getBoundingClientRect()
+      if (e.ctrlKey || e.metaKey) {
+        const fx = e.clientX - rect.left
+        const fy = e.clientY - rect.top
+        const factor = Math.exp(-e.deltaY * 0.01)
+        onViewportChange((v) => {
+          const nz = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, v.z * factor))
+          const wx = (fx - rect.width / 2 - v.x) / v.z
+          const wy = (fy - v.y) / v.z
+          return { z: nz, x: fx - rect.width / 2 - wx * nz, y: fy - wy * nz }
+        })
+      } else {
+        onViewportChange((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }))
+      }
+    }
+    el.addEventListener("wheel", onWheel, { passive: false })
+    return () => el.removeEventListener("wheel", onWheel)
+  }, [onViewportChange])
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return
+    if ((e.target as Element).closest("[data-no-pan]")) return
+    drag.current = { id: e.pointerId, sx: e.clientX, sy: e.clientY, ox: x, oy: y, moved: false }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current
+    if (!d || d.id !== e.pointerId) return
+    const dx = e.clientX - d.sx
+    const dy = e.clientY - d.sy
+    if (!d.moved && Math.hypot(dx, dy) < 3) return
+    if (!d.moved) {
+      d.moved = true
+      setPanning(true)
+    }
+    onViewportChange((v) => ({ ...v, x: d.ox + dx, y: d.oy + dy }))
+  }
+  const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current
+    if (!d || d.id !== e.pointerId) return
+    drag.current = null
+    setPanning(false)
+    if (!d.moved) onSelect(null) // click on empty canvas clears the selection
+  }
+
+  // Dot grid (216.reversible tiles): 2px dots, 18px pitch, #282828 @ 20%, anchored to the world.
+  const pitch = 18 * z
+  const r = Math.max(0.5, z)
+  const grid: CSSProperties = {
+    backgroundImage: `radial-gradient(circle at center, var(--ea-dot) ${r * 0.75}px, transparent ${r * 1.25}px)`,
+    backgroundSize: `${pitch}px ${pitch}px`,
+    backgroundPosition: `calc(50% + ${x + 8 * z}px) ${y + 4 * z}px`,
+  }
+
+  return (
+    <div
+      ref={ref}
+      className="ea-canvas relative h-full min-w-0 flex-1 overflow-hidden bg-(--ea-canvas)"
+      style={grid}
+      data-panning={panning}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      aria-label="Flow editor canvas"
+      role="application"
+    >
+      <div
+        className="absolute top-0 left-1/2 origin-top-left will-change-transform"
+        style={{ transform: `translate(${x}px, ${y}px) scale(${z})` }}
+      >
+        <div className="absolute top-[172.33px] -left-[164px] flex w-[328px] flex-col items-center gap-2">
+          {nodes.map((node, i) => {
+            const last = i === nodes.length - 1
+            return (
+              <Segment
+                key={node.id}
+                node={node}
+                last={last}
+                selected={selectedId === node.id}
+                onSelect={onSelect}
+                onAdd={onAddMain}
+                branch={node.branchLabel ? branch : undefined}
+                selectedId={selectedId}
+                onAddBranch={onAddBranch}
+              />
+            )
+          })}
+        </div>
+      </div>
+
+      <CanvasToolbar
+        zoom={z}
+        onZoomOut={() => zoomAt(z - 0.1)}
+        onZoomIn={() => zoomAt(z + 0.1)}
+        onReset={() => onViewportChange(DEFAULT_VIEWPORT)}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        onAskAI={onAskAI}
+      />
+    </div>
+  )
+}
+
+/** One node plus whatever hangs below it (connector, route label + branch, or the add button). */
+function Segment({
+  node,
+  last,
+  selected,
+  onSelect,
+  onAdd,
+  branch,
+  selectedId,
+  onAddBranch,
+}: {
+  node: FlowNode
+  last: boolean
+  selected: boolean
+  onSelect: (id: string) => void
+  onAdd: () => void
+  branch?: FlowNode[]
+  selectedId: string | null
+  onAddBranch: () => void
+}) {
+  const isAgent = node.variant === "agent"
+  return (
+    <div className={cn("relative flex flex-col items-center", node.id.startsWith("node-") && "ea-pop-in")}>
+      {/* Agent cards sit in an 8px frame (Figma 1:9780) so the selection halo has room */}
+      <div className={cn(isAgent && "p-2", last && "mb-[-1px]")}>
+        <NodeCard node={node} selected={selected} onSelect={onSelect} />
+      </div>
+
+      {last ? (
+        // Group 2147291561 — blue output handle, line, plus-circle (connector-end.svg 24×95)
+        <div className="relative h-[93px] w-6">
+          <Asset name="connector-end.svg" width={24} height={95} className="absolute -top-0.5 left-0" />
+          <Tip label="Add a step" side="bottom">
+            <button
+              type="button"
+              data-no-pan
+              aria-label="Add a step after this node"
+              onClick={onAdd}
+              className="absolute top-[69px] left-0 size-6 cursor-pointer rounded-full transition-colors duration-150 hover:bg-(--ea-blue-soft)"
+            />
+          </Tip>
+        </div>
+      ) : node.branchLabel ? (
+        <RouteLabel label={node.branchLabel} />
+      ) : (
+        // Group 2147291558 — output handle + arrow (connector.svg 24×72.5 in a 16×70 slot)
+        <div className="relative h-[70px] w-4">
+          <Asset name="connector.svg" width={24} height={72.5} className="absolute -top-0.5 -left-1" />
+        </div>
+      )}
+
+      {branch && <Branch nodes={branch} selectedId={selectedId} onSelect={onSelect} onAdd={onAddBranch} />}
+    </div>
+  )
+}
+
+/** Group 2147291558 (1:9774): handle, long arrow and the "Need to escalate" pill. */
+function RouteLabel({ label }: { label: string }) {
+  return (
+    <div className="relative h-[91.34px] w-[132px]">
+      <Asset name="vector-1598.svg" width={7.36396} height={91} className="absolute top-[0.84px] left-[62.32px]" />
+      <span className="absolute top-0 left-[58px] h-2 w-4 rounded-b-2xl border-t border-(--ea-line) bg-[#9dd9fb] shadow-[0px_2px_4px_0px_rgba(40,40,40,0.08)]" />
+      <span className="absolute top-8 left-0 flex h-[30px] items-center rounded-[10px] bg-linear-to-b from-white to-[#f7f7f7] px-3 py-2 text-(--ea-fg-muted) shadow-(--ea-shadow-control) text-[14px] leading-none font-medium tracking-[-0.28px] whitespace-nowrap">
+        {label}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * Group 2147291562 (1:9810): dashed escalation route to the right with its own
+ * plus-circle. Positioned exactly as in Figma relative to the condition node.
+ * Added branch steps stack under the plus, indented so the line meets the icon.
+ */
+function Branch({
+  nodes,
+  selectedId,
+  onSelect,
+  onAdd,
+}: {
+  nodes: FlowNode[]
+  selectedId: string | null
+  onSelect: (id: string) => void
+  onAdd: () => void
+}) {
+  return (
+    <div className="absolute top-[101.67px] left-[230px] h-[57px] w-[200px]">
+      <Asset name="branch.svg" width={200.5} height={57.5} className="absolute -top-[0.5px] -left-[0.5px]" />
+      <Tip label="Add an escalation step" side="right">
+        <button
+          type="button"
+          data-no-pan
+          aria-label="Add a step to the escalation route"
+          onClick={onAdd}
+          className="absolute top-[33px] left-[176px] size-6 cursor-pointer rounded-full transition-colors duration-150 hover:bg-(--ea-blue-soft)"
+        />
+      </Tip>
+      {nodes.length > 0 && (
+        <div className="absolute top-[55px] left-[160px] flex flex-col items-start">
+          {nodes.map((n) => (
+            <div key={n.id} className="ea-pop-in flex flex-col items-start">
+              <span aria-hidden className="ml-[27.5px] h-5 w-px bg-[#dddddd]" />
+              <NodeCard node={n} selected={selectedId === n.id} onSelect={onSelect} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NodeCard({
+  node,
+  selected,
+  onSelect,
+}: {
+  node: FlowNode
+  selected: boolean
+  onSelect: (id: string) => void
+}) {
+  const common = {
+    type: "button" as const,
+    "data-no-pan": true,
+    "aria-pressed": selected,
+    onClick: () => onSelect(node.id),
+  }
+
+  if (node.variant === "agent") {
+    return (
+      <button {...common} className="ea-node ea-node-agent flex w-[312px] flex-col items-start gap-5 px-4 py-3 text-left">
+        <span className="flex w-full flex-col gap-1.5 text-[14px] leading-none font-medium tracking-[-0.28px]">
+          <span className="whitespace-nowrap text-(--ea-fg-node)">{node.title}</span>
+          <span className="text-(--ea-fg-placeholder)">{node.description}</span>
+        </span>
+        <NodeIcon icon={node.icon} />
+      </button>
+    )
+  }
+
+  return (
+    <button {...common} className="ea-node flex w-[328px] items-center gap-2 px-4 py-3 text-left">
+      <NodeIcon icon={node.icon} />
+      <span className="text-[14px] leading-none font-medium tracking-[-0.28px] whitespace-nowrap text-(--ea-fg-node)">
+        {node.title}
+      </span>
+    </button>
+  )
+}
+
+function NodeIcon({ icon }: { icon: FlowNode["icon"] }) {
+  if (icon.kind === "chip") {
+    return (
+      <Chip color={icon.color} size={24} radius={8}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={icon.src} alt="" aria-hidden width={12} height={12} className="block max-w-none" />
+      </Chip>
+    )
+  }
+  return (
+    <span className="flex items-start gap-1.5">
+      {icon.apps.map((app) => (
+        <span key={app} className="ea-app-icon">
+          {app === "gmail" ? <Asset name="gmail.svg" size={16} /> : <Asset name="slack.svg" size={13} />}
+        </span>
+      ))}
+    </span>
+  )
+}
