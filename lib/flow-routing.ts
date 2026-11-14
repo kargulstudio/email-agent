@@ -26,7 +26,7 @@ type RouteOptions = {
 /**
  * Polyline from `a` (heading down) to `b` (arriving downward).
  * - aligned: one straight segment (the same line as the untouched layout)
- * - target below: down, across at mid-height, down
+ * - target below (however close): down, across at mid-height, down
  * - target above or level: down, out to a clear column, up, across, down
  */
 export function routeDown(a: Point, b: Point, { firstLeg, lastLeg, from, to, obstacles = [] }: RouteOptions): Point[] {
@@ -36,6 +36,11 @@ export function routeDown(a: Point, b: Point, { firstLeg, lastLeg, from, to, obs
   const midY = Math.max(a.y + firstLeg, (a.y + b.y) / 2)
   if (b.y - midY >= lastLeg) {
     return [a, { x: a.x, y: midY }, { x: b.x, y: midY }, b]
+  }
+  // Target still below, just close: bend halfway (corners shrink to fit) rather than looping around.
+  if (b.y - a.y >= CORNER) {
+    const y = (a.y + b.y) / 2
+    return [a, { x: a.x, y }, { x: b.x, y }, b]
   }
 
   // Not enough room going down: loop around through a column clear of every box it passes.
