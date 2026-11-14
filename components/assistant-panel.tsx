@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type KeyboardEvent, type Ref } from "react
 import { CheckIcon, CopyIcon, RotateCcwIcon } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { comingSoon } from "@/lib/prototype"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -258,9 +257,9 @@ function Composer({
         />
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
-            <IconButton icon="plus.svg" label="Add context" side="top" onClick={() => comingSoon("Context picker")} />
-            <IconButton icon="paperclip.svg" label="Attach a file" side="top" onClick={() => comingSoon("File attachments")} />
-            <IconButton icon="microphone-02.svg" label="Dictate" side="top" onClick={() => comingSoon("Voice input")} />
+            <IconButton icon="plus.svg" label="Add context" side="top" />
+            <IconButton icon="paperclip.svg" label="Attach a file" side="top" />
+            <IconButton icon="microphone-02.svg" label="Dictate" side="top" />
           </div>
           <Tip label="Send (Enter)" side="top">
             <button
