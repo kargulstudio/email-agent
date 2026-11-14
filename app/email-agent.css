@@ -46,8 +46,7 @@
     --ea-shadow-node: 0px 0px 0px 1px var(--ea-line);
     --ea-shadow-toolbar: 0px 1px 4px 0px rgba(0, 0, 0, 0.02), 0px 4px 12px 0px rgba(0, 0, 0, 0.04);
     --ea-shadow-primary: 0px 0px 0px 1px var(--ea-blue), 0px 4px 4px -3px rgba(29, 166, 246, 0.4),
-      0px 2px 4px 0px rgba(29, 166, 246, 0.12), inset 0px -2px 3px 0px rgba(0, 0, 0, 0.08),
-      inset 0px 0px 0px 1px rgba(255, 255, 255, 0.12);
+      0px 2px 4px 0px rgba(29, 166, 246, 0.12), inset 0px -2px 3px 0px rgba(0, 0, 0, 0.08);
     --ea-shadow-chip: 0px 2px 4px 0px rgba(9, 9, 11, 0.16), 0px 1px 2px 0px rgba(9, 9, 11, 0.08);
 
     --ea-ease: cubic-bezier(0.23, 1, 0.32, 1);
@@ -135,6 +134,19 @@
     cursor: default;
     opacity: 0.6;
   }
+  /* Figma's 1px inner stroke: white, strongest along the top and fading towards the bottom */
+  .email-agent .ea-primary::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.04));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
   /* Ellipse 41743 — soft white glow at the top edge (button-glow.svg, 128×62) */
   .email-agent .ea-glow {
     position: absolute;
@@ -147,7 +159,7 @@
     z-index: -1;
   }
 
-  /* Coloured square icon chip with white inner edge + glow */
+  /* Coloured square icon chip with a top-lit inner edge + glow */
   .email-agent .ea-chip {
     position: relative;
     display: inline-flex;
@@ -157,7 +169,20 @@
     overflow: clip;
     background: var(--chip, var(--ea-blue));
     box-shadow: var(--ea-shadow-chip), 0px 0px 0px 1px var(--chip, var(--ea-blue)),
-      inset 0px 0px 0px 1px rgba(255, 255, 255, 0.16), inset 0px 1px 20px 0px rgba(255, 255, 255, 0.16);
+      inset 0px 1px 20px 0px rgba(255, 255, 255, 0.16);
+  }
+  /* gradient inner stroke: white highlight along the top, fading down, slightly dark at the bottom */
+  .email-agent .ea-chip::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.12) 22%, rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0) 65%, rgba(0, 0, 0, 0.16));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   }
 
   /* Bordered app-icon box (Gmail / Slack) — Figma inside stroke, so the box stays 24×24 */

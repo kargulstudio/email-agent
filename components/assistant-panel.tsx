@@ -267,9 +267,10 @@ function Composer({
               onClick={submit}
               aria-label="Send message"
               disabled={disabled}
-              className="relative size-[30px] shrink-0 cursor-pointer rounded-[10px] transition-opacity max-lg:after:absolute max-lg:after:-inset-[5px] max-lg:after:content-[''] duration-150 hover:opacity-90 active:opacity-80 disabled:cursor-default disabled:opacity-60"
+              className="ea-primary size-[30px] p-0 max-lg:size-10"
             >
-              <Asset name="send-button.svg" size={38} className="absolute -top-0.5 -left-1" />
+              <Asset name="button-glow.svg" width={128} height={62} className="ea-glow" />
+              <Asset name="send-03.svg" size={16} />
             </button>
           </Tip>
         </div>
