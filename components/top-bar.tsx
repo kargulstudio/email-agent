@@ -52,7 +52,7 @@ export function TopBar({
       {/* Left: menu + agent identity */}
       <div className="flex min-w-0 flex-1 items-center gap-2 lg:flex-none">
         <IconButton
-          icon="menu-02.svg"
+          icon="menu-two-lines.svg"
           label={panelOpen ? "Hide AI Assistant" : "Show AI Assistant"}
           aria-expanded={panelOpen}
           aria-controls="ea-assistant"
