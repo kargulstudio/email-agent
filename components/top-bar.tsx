@@ -57,8 +57,9 @@ export function TopBar({
           aria-expanded={panelOpen}
           aria-controls="ea-assistant"
           onClick={onTogglePanel}
+          className="max-lg:size-9"
         />
-        <div className="flex min-w-0 flex-col items-start gap-1 rounded-full lg:h-[30px] lg:flex-row lg:items-center lg:gap-3 lg:p-2">
+        <div className="flex min-w-0 flex-col items-start gap-1 max-lg:gap-0.5 rounded-full lg:h-[30px] lg:flex-row lg:items-center lg:gap-3 lg:p-2">
           <div className="flex min-w-0 max-w-full items-center gap-1.5">
             <Chip color="var(--ea-teal)" size={14} radius={4}>
               <Asset name="mail-02.svg" size={10} />
@@ -71,8 +72,8 @@ export function TopBar({
             <span
               role="status"
               className={cn(
-                "flex h-5 items-center gap-1 rounded-md p-1 text-[11px] leading-none font-medium tracking-[-0.24px] whitespace-nowrap transition-colors duration-150 lg:h-6 lg:p-1.5 lg:text-[12px]",
-                published ? "bg-(--ea-teal-soft) text-(--ea-teal)" : "bg-(--ea-blue-soft) text-(--ea-blue)",
+                "flex items-center gap-1 rounded-md text-[12px] leading-none font-medium tracking-[-0.24px] whitespace-nowrap transition-colors duration-150 lg:h-6 lg:p-1.5",
+                published ? "text-(--ea-teal) lg:bg-(--ea-teal-soft)" : "text-(--ea-blue) lg:bg-(--ea-blue-soft)",
               )}
             >
               {published ? (
@@ -118,7 +119,7 @@ export function TopBar({
               aria-controls="ea-main"
               onClick={() => onTabChange(t.id)}
               className={cn(
-                "flex h-10 flex-1 items-center justify-center gap-1 p-2 text-[14px] lg:h-[30px] lg:flex-none leading-none font-medium tracking-[-0.28px] whitespace-nowrap",
+                "flex h-9 flex-1 items-center justify-center gap-1 p-2 text-[14px] lg:h-[30px] lg:flex-none leading-none font-medium tracking-[-0.28px] whitespace-nowrap",
                 active
                   ? "ea-control text-(--ea-fg)"
                   : "cursor-pointer rounded-md text-(--ea-fg-muted) transition-colors duration-150 hover:text-(--ea-fg)",
@@ -136,7 +137,7 @@ export function TopBar({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <button type="button" aria-label="More actions" className="ea-control size-10 p-2 lg:hidden">
+              <button type="button" aria-label="More actions" className="ea-control size-9 p-2 lg:hidden">
                 <Asset name="dots-horizontal.svg" />
               </button>
             }
@@ -174,7 +175,7 @@ export function TopBar({
           <Asset name="play-circle.svg" className={cn(testing && "animate-pulse")} />
           {testing ? "Testing…" : "Test"}
         </button>
-        <PrimaryButton icon="arrow-narrow-up.svg" onClick={onPublish} disabled={published} className="max-lg:h-10">
+        <PrimaryButton icon="arrow-narrow-up.svg" onClick={onPublish} disabled={published} className="max-lg:h-9 max-lg:px-3">
           {published ? (
             "Published"
           ) : (
